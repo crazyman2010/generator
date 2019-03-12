@@ -1,5 +1,5 @@
 /**
- *    Copyright 2006-2017 the original author or authors.
+ *    Copyright 2006-2019 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -15,33 +15,25 @@
  */
 package org.mybatis.generator.codegen.mybatis3.model;
 
-import static org.mybatis.generator.internal.util.JavaBeansUtil.getJavaBeansField;
-import static org.mybatis.generator.internal.util.JavaBeansUtil.getJavaBeansGetter;
-import static org.mybatis.generator.internal.util.JavaBeansUtil.getJavaBeansSetter;
-import static org.mybatis.generator.internal.util.messages.Messages.getString;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-
 import org.mybatis.generator.api.CommentGenerator;
 import org.mybatis.generator.api.FullyQualifiedTable;
 import org.mybatis.generator.api.IntrospectedColumn;
 import org.mybatis.generator.api.Plugin;
-import org.mybatis.generator.api.dom.java.CompilationUnit;
-import org.mybatis.generator.api.dom.java.Field;
-import org.mybatis.generator.api.dom.java.FullyQualifiedJavaType;
-import org.mybatis.generator.api.dom.java.JavaVisibility;
-import org.mybatis.generator.api.dom.java.Method;
-import org.mybatis.generator.api.dom.java.Parameter;
-import org.mybatis.generator.api.dom.java.TopLevelClass;
+import org.mybatis.generator.api.dom.java.*;
 import org.mybatis.generator.codegen.AbstractJavaGenerator;
 import org.mybatis.generator.codegen.RootClassInfo;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+
+import static org.mybatis.generator.internal.util.JavaBeansUtil.*;
+import static org.mybatis.generator.internal.util.messages.Messages.getString;
+
 /**
- * 
  * @author Jeff Butler
- * 
  */
 public class BaseRecordGenerator extends AbstractJavaGenerator {
 
@@ -85,13 +77,35 @@ public class BaseRecordGenerator extends AbstractJavaGenerator {
         }
 
         String rootClass = getRootClass();
+        //add serialVersionUID
+        Field field = new Field();
+        System.out.println("root class is : "+rootClass);
+        if(rootClass!=null){
+            try {
+                Class rootClazz=Class.forName(rootClass);
+                if (rootClazz.newInstance() instanceof Serializable) {
+                    field.setType(new FullyQualifiedJavaType("long"));
+                    field.setName("serialVersionUID");
+                    field.setVisibility(JavaVisibility.PRIVATE);
+                    field.setFinal(true);
+                    field.setStatic(true);
+                    field.setInitializationString(new Random().nextLong() + "L");
+                    topLevelClass.addField(field);
+                    topLevelClass.addImportedType(field.getType());
+                }
+            } catch (Exception e) {
+               System.out.println("can not load rootClass");
+            }
+        }
+
+
         for (IntrospectedColumn introspectedColumn : introspectedColumns) {
             if (RootClassInfo.getInstance(rootClass, warnings)
                     .containsProperty(introspectedColumn)) {
                 continue;
             }
 
-            Field field = getJavaBeansField(introspectedColumn, context, introspectedTable);
+            field = getJavaBeansField(introspectedColumn, context, introspectedTable);
             if (plugins.modelFieldGenerated(field, topLevelClass,
                     introspectedColumn, introspectedTable,
                     Plugin.ModelClassType.BASE_RECORD)) {
